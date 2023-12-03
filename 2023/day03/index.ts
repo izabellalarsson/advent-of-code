@@ -1,96 +1,116 @@
-import { c } from "vitest/dist/reporters-5f784f42.js";
-
 const fs = require("node:fs");
-const readline = require("node:readline");
 
-const events = require("events");
+const specialCharacters = ["@", "#", "$", "%", "&", "*", "=", "+", "/", "-"];
+
+const adjacents = [
+  [0, 1], // Top
+  [0, -1], // Bottom
+  [-1, 0], // Left
+  [1, 0], // Right
+  [1, 1], // Top right
+  [-1, 1], // Top left
+  [1, -1], // Bottom right
+  [-1, -1], // Bottom left
+];
+
+function isSurroundedBySpecial(grid: string[][], x: number, y: number) {
+  const match = adjacents.find(([adjecantX, adjecantY]) => {
+    const posX = x + adjecantX;
+    const posY = y + adjecantY;
+
+    return (
+      posX >= 0 && // Check if out of bounds on the left.
+      posX < grid.length && //   Check if out of bounds on the right
+      posY >= 0 &&
+      posY < grid[0].length && // Check if out of bounds on the top or bottom
+      specialCharacters.includes(grid[posX][posY])
+    );
+  });
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    x: x + match[0],
+    y: y + match[1],
+  };
+}
 
 export const partOne = async (fileName: string) => {
-  const rl = readline.createInterface({
-    input: fs.createReadStream(fileName),
-    crlfDelay: Infinity,
-  });
+  try {
+    const data = fs.readFileSync(fileName, "utf8")
+    const lines = data.split("\n");
+    const grid = lines.map((line) => line.split(""));
 
-  const arr: any[] = [];
-  const redCubesAdded = 12;
-  const greenCubesAdded = 13;
-  const blueCubesAdded = 14;
+    const surroundedNumbers: number[] = [];
 
-  rl.on("line", (line: string) => {
-    const split = line.split(": ");
-    const gameNumber = split[0].split("Game ")[1];
+    grid.forEach((line, y) => {
+      return [...line.join("").matchAll(/\d+/g)].map((match) => {
+        const startOfMatch = match.index;
 
-    const redCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) red/g
-    );
-    const greenCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) green/g
-    );
-    const blueCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) blue/g
-    );
+        if (typeof startOfMatch === "undefined") {
+          return;
+        }
 
-    const redCubesHighest = redCubes?.map((cube) =>
-      parseInt(cube.slice(0, -4), 10)
-    );
-    const greenCubesHighest = greenCubes?.map((cube) =>
-      parseInt(cube.slice(0, -4), 10)
-    );
-    const blueCubesHighest = blueCubes?.map((cube) =>
-      parseInt(cube.slice(0, -4), 10)
-    );
+        let matchSurrounded = false;
 
-    if (
-      redCubesHighest &&
-      Math.max(...redCubesHighest) <= redCubesAdded &&
-      greenCubesHighest &&
-      Math.max(...greenCubesHighest) <= greenCubesAdded &&
-      blueCubesHighest &&
-      Math.max(...blueCubesHighest) <= blueCubesAdded
-    ) {
-      arr.push(parseInt(gameNumber, 10));
-    }
-  });
+        for (let x = 0; x < match[0].length; x++) {
+          if (isSurroundedBySpecial(grid, y, startOfMatch + x)) {
+            matchSurrounded = true;
+            break;
+          }
+        }
 
-  await events.once(rl, "close");
-
-  return arr.reduce((a, b) => a + b, 0);
+        if (matchSurrounded) {
+          surroundedNumbers.push(parseInt(match[0]));
+        }
+      });
+    });
+    
+    return surroundedNumbers.reduce((acc, curr) => acc + curr, 0)
+  
+  } catch (error) {
+    console.error(error)
+  }
 };
 
 export const partTwo = async (fileName: string) => {
-  const rl = readline.createInterface({
-    input: fs.createReadStream(fileName),
-    crlfDelay: Infinity,
-  });
-  const arr: any[] = [];
-  rl.on("line", (line: string) => {
-    const split = line.split(": ");
+  try {
+    const data = fs.readFileSync(fileName, "utf8")
+    const lines = data.split("\n");
+    const grid = lines.map(line => line.split(''))
 
-    const redCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) red/g
-    );
-    const greenCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) green/g
-    );
-    const blueCubes = split[1].match(
-      /([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]) blue/g
-    );
-
-    const redCubesHighest =
-      redCubes &&
-      Math.max(...redCubes?.map((cube) => parseInt(cube.slice(0, -4), 10)));
-    const greenCubesHighest =
-      greenCubes &&
-      Math.max(...greenCubes?.map((cube) => parseInt(cube.slice(0, -4), 10)));
-    const blueCubesHighest =
-      blueCubes &&
-      Math.max(...blueCubes?.map((cube) => parseInt(cube.slice(0, -4), 10)));
-
-    if (redCubesHighest && greenCubesHighest && blueCubesHighest) {
-      arr.push(redCubesHighest * greenCubesHighest * blueCubesHighest);
-    }
-  });
-
-  await events.once(rl, "close");
-  return arr.reduce((a, b) => a + b, 0);
+    const symbolHits = new Map<string, number[]>()
+  
+    grid.forEach((line, y) => {
+      return [...line.join('').matchAll(/\d+/g)].map(match => {
+        const startOfMatch = match.index
+  
+        if (typeof startOfMatch === 'undefined') {
+          return
+        }
+  
+        for (let x = 0; x < match[0].length; x++) {
+          const matchCoords = isSurroundedBySpecial(grid, y, startOfMatch + x)
+          if (matchCoords) {
+            const key = `${matchCoords.x},${matchCoords.y}`
+            if (symbolHits.has(key)) {
+              const newValues = new Set([...symbolHits.get(key)!, parseInt(match[0])])
+              symbolHits.set(key, [...newValues])
+            } else {
+              symbolHits.set(key, [parseInt(match[0])])
+            }
+          }
+        }
+      })
+    })
+  
+    return Array.from(symbolHits.values())
+      .filter(values => values.length === 2)
+      .reduce((sum, [a, b]) => sum + a * b, 0)
+  
+  } catch (error) {
+    console.error(error)
+  }
 };

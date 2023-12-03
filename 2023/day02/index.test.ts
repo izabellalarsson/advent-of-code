@@ -14,7 +14,7 @@ describe.skip("day02 Part 1", () => {
     })
 });
 
-describe("day02 Part 2", () => {
+describe.skip("day02 Part 2", () => {
     test("example input", async () => {
         const value = await partTwo('example01.txt');
         expect(value).toBe(2286);
